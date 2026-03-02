@@ -14,12 +14,13 @@ import (
 )
 
 type Order struct {
-	ID         int       `json:"id"`
+	OrderID    int       `json:"order_id"`
 	ItemID     string    `json:"item_id"`
 	Quantity   int       `json:"quantity"`
 	CustomerID string    `json:"customer_id"`
 	TotalPrice float64   `json:"total_price"`
 	TraceID    string    `json:"trace_id"`
+	Status     string    `json:"status"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -262,6 +263,73 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "OK")
 }
 
+// listOrdersHandler handles GET /api/orders - returns all orders
+func listOrdersHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	rows, err := db.Query("SELECT id, item_id, quantity, customer_id, total_price, trace_id, created_at FROM orders ORDER BY created_at DESC LIMIT 100")
+	if err != nil {
+		log.Printf("[Order Service] Query failed: %v", err)
+		http.Error(w, "Failed to fetch orders", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var orders []Order
+	for rows.Next() {
+		var order Order
+		if err := rows.Scan(&order.OrderID, &order.ItemID, &order.Quantity, &order.CustomerID, &order.TotalPrice, &order.TraceID, &order.CreatedAt); err != nil {
+			log.Printf("[Order Service] Scan failed: %v", err)
+			continue
+		}
+		order.Status = "completed"
+		orders = append(orders, order)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"orders": orders,
+		"total":  len(orders),
+	})
+}
+
+// getOrderHandler handles GET /api/order/{id} - returns specific order
+func getOrderHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	orderID := r.URL.Query().Get("id")
+	if orderID == "" {
+		http.Error(w, "Order ID required", http.StatusBadRequest)
+		return
+	}
+
+	var order Order
+	err := db.QueryRow("SELECT id, item_id, quantity, customer_id, total_price, trace_id, created_at FROM orders WHERE id = $1", orderID).
+		Scan(&order.OrderID, &order.ItemID, &order.Quantity, &order.CustomerID, &order.TotalPrice, &order.TraceID, &order.CreatedAt)
+
+	if err == sql.ErrNoRows {
+		http.Error(w, "Order not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		log.Printf("[Order Service] Query failed: %v", err)
+		http.Error(w, "Failed to fetch order", http.StatusInternalServerError)
+		return
+	}
+
+	order.Status = "completed"
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(order)
+}
+
 // getEnv retrieves environment variable or returns default
 func getEnv(key, defaultVal string) string {
 	if value := os.Getenv(key); value != "" {
@@ -272,6 +340,8 @@ func getEnv(key, defaultVal string) string {
 
 func main() {
 	http.HandleFunc("/place-order", placeOrderHandler)
+	http.HandleFunc("/api/orders", listOrdersHandler)
+	http.HandleFunc("/api/order", getOrderHandler)
 	http.HandleFunc("/health", healthHandler)
 
 	port := getEnv("PORT", "5000")
