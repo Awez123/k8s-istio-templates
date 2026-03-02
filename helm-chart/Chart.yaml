@@ -1,0 +1,5 @@
+apiVersion: v2
+name: retail-mesh
+description: "Helm chart for the Retail Mesh microservices system."
+version: 0.1.0
+appVersion: "1.0"

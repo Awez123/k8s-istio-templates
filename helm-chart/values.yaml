@@ -1,0 +1,30 @@
+# Default values for retail-mesh chart
+# namespace can be overridden; if unset it defaults to the release namespace
+namespace: "retail"
+
+image:
+  repository: awezkhan6899/retail
+  pullPolicy: IfNotPresent
+  tag: latest
+
+postgres:
+  user: postgres
+  password: password
+  db: orders_db
+
+mongodb: {}
+redis: {}
+
+services:
+  frontend:
+    port: 3000
+  order:
+    port: 5000
+  inventory:
+    port: 5001
+  payment:
+    port: 5002
+  notification:
+    port: 5003
+  loyalty:
+    port: 5004

@@ -1,0 +1,85 @@
+# deployments and services for all six application components
+{{- range $name, $svc := .Values.services }}
+{{- $deploymentName := $name }}
+{{- $serviceName := $name }}
+{{- if ne $name "frontend" }}
+{{- $serviceName = printf "%s-service" $name }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $serviceName }}
+  namespace: {{ default $.Release.Namespace $.Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $serviceName }}
+  template:
+    metadata:
+      labels:
+        app: {{ $serviceName }}
+    spec:
+      containers:
+        - name: {{ $serviceName }}
+          image: {{ $.Values.image.repository }}-{{ $name }}:{{ $.Values.image.tag }}
+          env:
+            {{- if eq $name "frontend" }}
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: ORDER_SERVICE_HOST
+              value: "order-service"
+            - name: ORDER_SERVICE_PORT
+              value: "5000"
+            {{- else if eq $name "order" }}
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: "retail_user"
+            - name: DB_PASSWORD
+              value: "retail_password"
+            - name: DB_NAME
+              value: "retail_db"
+            - name: INVENTORY_SERVICE_HOST
+              value: "inventory-service"
+            - name: INVENTORY_SERVICE_PORT
+              value: "5001"
+            {{- else if eq $name "inventory" }}
+            - name: MONGO_HOST
+              value: "mongodb"
+            - name: MONGO_PORT
+              value: "27017"
+            - name: MONGO_DBNAME
+              value: "retail_db"
+            {{- else if eq $name "payment" }}
+            - name: NOTIFICATION_SERVICE_HOST
+              value: "notification-service"
+            - name: NOTIFICATION_SERVICE_PORT
+              value: "5003"
+            {{- end }}
+          ports:
+            - containerPort: {{ $svc.port }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ $svc.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $serviceName }}
+  namespace: {{ default $.Release.Namespace $.Values.namespace }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ $svc.port }}
+  selector:
+    app: {{ $serviceName }}
+---
+{{- end }}
