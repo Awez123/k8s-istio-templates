@@ -28,3 +28,5 @@ services:
     port: 5003
   loyalty:
     port: 5004
+  admin-frontend:
+    port: 8000

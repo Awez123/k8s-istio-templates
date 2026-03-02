@@ -1,0 +1,90 @@
+---
+# Admin Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-frontend
+  namespace: retail-mesh
+  labels:
+    app: admin-frontend
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-frontend
+  template:
+    metadata:
+      labels:
+        app: admin-frontend
+        version: v1
+    spec:
+      containers:
+      - name: admin-frontend
+        image: awezkhan6899/retail-admin-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8000
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "8000"
+        - name: ORDER_SERVICE_HOST
+          value: "order-service"
+        - name: ORDER_SERVICE_PORT
+          value: "5000"
+        - name: INVENTORY_SERVICE_HOST
+          value: "inventory-service"
+        - name: INVENTORY_SERVICE_PORT
+          value: "5001"
+        - name: PAYMENT_SERVICE_HOST
+          value: "payment-service"
+        - name: PAYMENT_SERVICE_PORT
+          value: "5002"
+        - name: LOYALTY_SERVICE_HOST
+          value: "loyalty-service"
+        - name: LOYALTY_SERVICE_PORT
+          value: "5004"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 2
+          failureThreshold: 2
+
+---
+# Admin Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-frontend
+  namespace: retail-mesh
+  labels:
+    app: admin-frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: admin-frontend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000
+    targetPort: 8000

@@ -3,7 +3,9 @@
 {{- $deploymentName := $name }}
 {{- $serviceName := $name }}
 {{- if ne $name "frontend" }}
+{{- if ne $name "admin-frontend" }}
 {{- $serviceName = printf "%s-service" $name }}
+{{- end }}
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
@@ -22,7 +24,11 @@ spec:
     spec:
       containers:
         - name: {{ $serviceName }}
+          {{- if eq $name "admin-frontend" }}
+          image: awezkhan6899/retail-admin-frontend:{{ $.Values.image.tag }}
+          {{- else }}
           image: {{ $.Values.image.repository }}-{{ $name }}:{{ $.Values.image.tag }}
+          {{- end }}
           env:
             {{- if eq $name "frontend" }}
             - name: REDIS_HOST
@@ -33,6 +39,23 @@ spec:
               value: "order-service"
             - name: ORDER_SERVICE_PORT
               value: "5000"
+            {{- else if eq $name "admin-frontend" }}
+            - name: ORDER_SERVICE_HOST
+              value: "order-service"
+            - name: ORDER_SERVICE_PORT
+              value: "5000"
+            - name: INVENTORY_SERVICE_HOST
+              value: "inventory-service"
+            - name: INVENTORY_SERVICE_PORT
+              value: "5001"
+            - name: PAYMENT_SERVICE_HOST
+              value: "payment-service"
+            - name: PAYMENT_SERVICE_PORT
+              value: "5002"
+            - name: LOYALTY_SERVICE_HOST
+              value: "loyalty-service"
+            - name: LOYALTY_SERVICE_PORT
+              value: "5004"
             {{- else if eq $name "order" }}
             - name: DB_HOST
               value: "postgres"
