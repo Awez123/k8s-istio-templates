@@ -127,52 +127,51 @@ async def health_check():
     return JSONResponse(status_code=200, content={"status": "OK"})
 
 @app.post("/check-stock")
-async def check_stock(request: Request, stock_req: StockCheckRequest):
+async def check_stock(stock_req: StockCheckRequest):
     """Check if item has sufficient stock"""
-    trace_id = request.headers.get("x-b3-traceid", "unknown")
+    # Trace ID is handled by middleware but we can still get it if needed from headers
+    # but the logs already show it from middleware.
     
     try:
         inventory_col = db["inventory"]
         item = inventory_col.find_one({"_id": stock_req.item_id})
         
         if not item:
-            logger.warning(f"[Inventory Service] Item not found: {stock_req.item_id}, TraceID: {trace_id}")
+            logger.warning(f"[Inventory Service] Item not found: {stock_req.item_id}")
             return StockCheckResponse(
                 item_id=stock_req.item_id,
                 available=False,
                 in_stock=0,
                 message="Item not found",
-                trace_id=trace_id
+                trace_id="unknown"
             )
         
         in_stock = item.get("quantity", 0)
         available = in_stock >= stock_req.quantity
         
-        logger.info(f"[Inventory Service] Stock check for {stock_req.item_id}: available={available}, in_stock={in_stock}, requested={stock_req.quantity}, TraceID: {trace_id}")
+        logger.info(f"[Inventory Service] Stock check for {stock_req.item_id}: available={available}, in_stock={in_stock}, requested={stock_req.quantity}")
         
         return StockCheckResponse(
             item_id=stock_req.item_id,
             available=available,
             in_stock=in_stock,
             message=f"Item in stock: {in_stock} units" if available else f"Insufficient stock. Available: {in_stock}",
-            trace_id=trace_id
+            trace_id="unknown"
         )
     
     except Exception as e:
-        logger.error(f"[Inventory Service] Error checking stock: {e}, TraceID: {trace_id}")
+        logger.error(f"[Inventory Service] Error checking stock: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/items/{item_id}")
-async def get_item(item_id: str, request: Request):
+async def get_item(item_id: str):
     """Get item details"""
-    trace_id = request.headers.get("x-b3-traceid", "unknown")
-    
     try:
         inventory_col = db["inventory"]
         item = inventory_col.find_one({"_id": item_id})
         
         if not item:
-            logger.warning(f"[Inventory Service] Item not found: {item_id}, TraceID: {trace_id}")
+            logger.warning(f"[Inventory Service] Item not found: {item_id}")
             raise HTTPException(status_code=404, detail="Item not found")
         
         # Return item without MongoDB object ID
@@ -181,21 +180,19 @@ async def get_item(item_id: str, request: Request):
             "name": item.get("name", ""),
             "quantity": item.get("quantity", 0),
             "price": item.get("price", 0.0),
-            "trace_id": trace_id
+            "trace_id": "unknown"
         }
         
-        logger.info(f"[Inventory Service] Retrieved item {item_id}, TraceID: {trace_id}")
+        logger.info(f"[Inventory Service] Retrieved item {item_id}")
         return item_data
     
     except Exception as e:
-        logger.error(f"[Inventory Service] Error retrieving item: {e}, TraceID: {trace_id}")
+        logger.error(f"[Inventory Service] Error retrieving item: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/items")
-async def list_items(request: Request):
+async def list_items():
     """List all items"""
-    trace_id = request.headers.get("x-b3-traceid", "unknown")
-    
     try:
         inventory_col = db["inventory"]
         items = list(inventory_col.find())
@@ -209,11 +206,11 @@ async def list_items(request: Request):
                 "price": item.get("price", 0.0)
             })
         
-        logger.info(f"[Inventory Service] Listed {len(items_list)} items, TraceID: {trace_id}")
-        return {"items": items_list, "trace_id": trace_id}
+        logger.info(f"[Inventory Service] Listed {len(items_list)} items")
+        return {"items": items_list, "trace_id": "unknown"}
     
     except Exception as e:
-        logger.error(f"[Inventory Service] Error listing items: {e}, TraceID: {trace_id}")
+        logger.error(f"[Inventory Service] Error listing items: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":

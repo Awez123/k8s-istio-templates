@@ -3,8 +3,8 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # Copy admin-frontend source and go.mod
-COPY admin-frontend/main.go .
-COPY admin-frontend/go.mod .
+COPY main.go .
+COPY go.mod .
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o admin-frontend .

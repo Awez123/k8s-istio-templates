@@ -35,10 +35,12 @@ type NotificationRequest struct {
 }
 
 var notificationServiceURL string
+var loyaltyServiceURL string
 var paymentFailureRate = 0.1 // 10% failure rate for chaos testing
 
 func init() {
-	notificationServiceURL = "http://" + getEnv("NOTIFICATION_SERVICE_HOST", "notification-service") + ":" + getEnv("NOTIFICATION_SERVICE_PORT", "5002")
+	notificationServiceURL = "http://" + getEnv("NOTIFICATION_SERVICE_HOST", "notification-service") + ":" + getEnv("NOTIFICATION_SERVICE_PORT_VAL", "5003")
+	loyaltyServiceURL = "http://" + getEnv("LOYALTY_SERVICE_HOST", "loyalty-service") + ":" + getEnv("LOYALTY_SERVICE_PORT_VAL", "5004")
 
 	// Seed random for payment failures
 	rand.Seed(time.Now().UnixNano())
@@ -138,6 +140,50 @@ func notifyPaymentSuccess(traceID string, orderID int, customerID string, transa
 	log.Printf("[Payment Service] Notification sent successfully, TraceID: %s", traceID)
 }
 
+// awardLoyaltyPoints calls Loyalty Service to calculate and award points
+func awardLoyaltyPoints(traceID string, customerID string, amount float64, originalHeaders http.Header) {
+	loyaltyReq := map[string]interface{}{
+		"customer_id":  customerID,
+		"order_amount": amount,
+	}
+
+	body, _ := json.Marshal(loyaltyReq)
+	httpReq, err := http.NewRequest(http.MethodPost, loyaltyServiceURL+"/calculate-points", bytes.NewReader(body))
+	if err != nil {
+		log.Printf("[Payment Service] Failed to create loyalty request: %v, TraceID: %s", err, traceID)
+		return
+	}
+
+	// Add headers
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-b3-traceid", traceID)
+
+	// Propagate other B3 headers
+	b3Headers := []string{
+		"x-request-id",
+		"x-b3-spanid",
+		"x-b3-parentspanid",
+		"x-b3-sampled",
+		"x-b3-flags",
+	}
+
+	for _, header := range b3Headers {
+		if value := originalHeaders.Get(header); value != "" {
+			httpReq.Header.Set(header, value)
+		}
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		log.Printf("[Payment Service] Loyalty Service call failed: %v, TraceID: %s", err, traceID)
+		return
+	}
+	defer resp.Body.Close()
+
+	log.Printf("[Payment Service] Loyalty points awarded successfully, TraceID: %s", traceID)
+}
+
 // processPaymentHandler handles POST /process-payment
 func processPaymentHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -171,6 +217,9 @@ func processPaymentHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Send notification
 	go notifyPaymentSuccess(traceID, paymentReq.OrderID, paymentReq.CustomerID, transactionID, paymentReq.Amount, r.Header)
+
+	// Award loyalty points
+	go awardLoyaltyPoints(traceID, paymentReq.CustomerID, paymentReq.Amount, r.Header)
 
 	response := PaymentResponse{
 		Status:        "success",

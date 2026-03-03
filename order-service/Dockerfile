@@ -7,7 +7,7 @@ WORKDIR /app
 RUN apk add --no-cache git
 
 # Copy go files
-COPY order-service/main.go .
+COPY main.go .
 
 # Download dependencies
 RUN go mod init github.com/retail-mesh/order-service && \

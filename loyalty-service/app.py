@@ -5,9 +5,8 @@ from datetime import datetime
 from typing import Optional
 from random import randint
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +17,10 @@ app = FastAPI(title="Loyalty Service")
 class LoyaltyCheckRequest(BaseModel):
     customer_id: str
     order_amount: float
+
+class RedeemRequest(BaseModel):
+    customer_id: str
+    points_to_redeem: int
 
 class LoyaltyResponse(BaseModel):
     customer_id: str
@@ -44,10 +47,8 @@ async def health_check():
     return {"status": "OK"}
 
 @app.post("/calculate-points")
-async def calculate_points(request: Request, loyalty_req: LoyaltyCheckRequest):
+async def calculate_points(loyalty_req: LoyaltyCheckRequest):
     """Calculate loyalty points for a customer"""
-    trace_id = request.headers.get("x-b3-traceid", "unknown")
-    
     # Calculate points: 1 point per dollar spent (random bonus between 1-10%)
     base_points = int(loyalty_req.order_amount)
     bonus_rate = randint(100, 110) / 100  # 1-10% bonus
@@ -60,28 +61,56 @@ async def calculate_points(request: Request, loyalty_req: LoyaltyCheckRequest):
     customer_points[loyalty_req.customer_id] += points_earned
     total_points = customer_points[loyalty_req.customer_id]
     
-    logger.info(f"[Loyalty Service] Points calculated for {loyalty_req.customer_id}: earned={points_earned}, total={total_points}, TraceID: {trace_id}")
+    logger.info(f"[Loyalty Service] Points calculated for {loyalty_req.customer_id}: earned={points_earned}, total={total_points}")
     
     return LoyaltyResponse(
         customer_id=loyalty_req.customer_id,
         points_earned=points_earned,
         total_points=total_points,
         message=f"Earned {points_earned} points! Total: {total_points}",
-        trace_id=trace_id
+        trace_id="unknown"
     )
 
 @app.get("/customer/{customer_id}/points")
-async def get_customer_points(customer_id: str, request: Request):
+async def get_customer_points(customer_id: str):
     """Get customer's current points"""
-    trace_id = request.headers.get("x-b3-traceid", "unknown")
-    
     points = customer_points.get(customer_id, 0)
-    logger.info(f"[Loyalty Service] Fetched points for {customer_id}: {points}, TraceID: {trace_id}")
+    logger.info(f"[Loyalty Service] Fetched points for {customer_id}: {points}")
     
     return {
         "customer_id": customer_id,
         "total_points": points,
-        "trace_id": trace_id
+        "tier": "Gold" if points > 5000 else "Silver" if points > 1000 else "Bronze",
+        "trace_id": "unknown"
+    }
+
+@app.post("/redeem-points")
+async def redeem_points(redeem_req: RedeemRequest):
+    """Redeem loyalty points for a discount"""
+    customer_id = redeem_req.customer_id
+    points_to_redeem = redeem_req.points_to_redeem
+    
+    current_points = customer_points.get(customer_id, 0)
+    
+    if current_points < points_to_redeem:
+        logger.warning(f"[Loyalty Service] Insufficient points for {customer_id}: has {current_points}, needs {points_to_redeem}")
+        raise HTTPException(status_code=400, detail="Insufficient points")
+    
+    customer_points[customer_id] -= points_to_redeem
+    new_total = customer_points[customer_id]
+    
+    # Simple conversion: 100 points = $1 discount
+    discount_value = points_to_redeem / 100.0
+    
+    logger.info(f"[Loyalty Service] Redeemed {points_to_redeem} points for {customer_id}. New total: {new_total}")
+    
+    return {
+        "status": "success",
+        "customer_id": customer_id,
+        "points_redeemed": points_to_redeem,
+        "discount_value": discount_value,
+        "remaining_points": new_total,
+        "message": f"Successfully redeemed {points_to_redeem} points for ${discount_value} discount"
     }
 
 if __name__ == "__main__":

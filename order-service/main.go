@@ -53,6 +53,7 @@ type InventoryCheckResponse struct {
 
 var db *sql.DB
 var inventoryServiceURL string
+var paymentServiceURL string
 
 func init() {
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
@@ -77,8 +78,9 @@ func init() {
 
 	log.Println("✓ Connected to PostgreSQL")
 
-	// Set Inventory Service URL
-	inventoryServiceURL = "http://" + getEnv("INVENTORY_SERVICE_HOST", "inventory-service") + ":" + getEnv("INVENTORY_SERVICE_PORT", "5001")
+	// Set Service URLs
+	inventoryServiceURL = "http://" + getEnv("INVENTORY_SERVICE_HOST", "inventory-service") + ":" + getEnv("INVENTORY_SERVICE_PORT_VAL", "5001")
+	paymentServiceURL = "http://" + getEnv("PAYMENT_SERVICE_HOST", "payment-service") + ":" + getEnv("PAYMENT_SERVICE_PORT_VAL", "5002")
 
 	// Create tables
 	createTables()
@@ -241,6 +243,9 @@ func placeOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Order Service] Order created successfully - OrderID: %d, TraceID: %s", orderID, traceID)
 
+	// Trigger payment asynchronously
+	go triggerPayment(traceID, orderID, orderReq.CustomerID, orderReq.TotalPrice, r.Header)
+
 	response := OrderResponse{
 		Status:  "success",
 		Message: "Order placed successfully",
@@ -251,6 +256,51 @@ func placeOrderHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(response)
+}
+
+// triggerPayment calls the Payment Service to process the order payment
+func triggerPayment(traceID string, orderID int, customerID string, amount float64, originalHeaders http.Header) {
+	paymentReq := map[string]interface{}{
+		"order_id":    orderID,
+		"customer_id":  customerID,
+		"amount":       amount,
+	}
+
+	body, _ := json.Marshal(paymentReq)
+	httpReq, err := http.NewRequest(http.MethodPost, paymentServiceURL+"/process-payment", bytes.NewReader(body))
+	if err != nil {
+		log.Printf("[Order Service] Failed to create payment request: %v, TraceID: %s", err, traceID)
+		return
+	}
+
+	// Add headers
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-b3-traceid", traceID)
+
+	// Propagate other B3 headers
+	b3Headers := []string{
+		"x-request-id",
+		"x-b3-spanid",
+		"x-b3-parentspanid",
+		"x-b3-sampled",
+		"x-b3-flags",
+	}
+
+	for _, header := range b3Headers {
+		if value := originalHeaders.Get(header); value != "" {
+			httpReq.Header.Set(header, value)
+		}
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		log.Printf("[Order Service] Payment Service call failed: %v, TraceID: %s", err, traceID)
+		return
+	}
+	defer resp.Body.Close()
+
+	log.Printf("[Order Service] Payment triggered successfully for OrderID: %d, TraceID: %s", orderID, traceID)
 }
 
 // healthHandler for liveness/readiness probes

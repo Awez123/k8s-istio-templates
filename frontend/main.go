@@ -95,10 +95,10 @@ func init() {
 	log.Println("✓ Connected to Redis")
 
 	// Set Service URLs
-	orderServiceURL = "http://" + getEnv("ORDER_SERVICE_HOST", "order-service") + ":" + getEnv("ORDER_SERVICE_PORT", "5000")
-	inventoryServiceURL = "http://" + getEnv("INVENTORY_SERVICE_HOST", "inventory-service") + ":" + getEnv("INVENTORY_SERVICE_PORT", "5001")
-	paymentServiceURL = "http://" + getEnv("PAYMENT_SERVICE_HOST", "payment-service") + ":" + getEnv("PAYMENT_SERVICE_PORT", "5002")
-	loyaltyServiceURL = "http://" + getEnv("LOYALTY_SERVICE_HOST", "loyalty-service") + ":" + getEnv("LOYALTY_SERVICE_PORT", "5004")
+	orderServiceURL = "http://" + getEnv("ORDER_SERVICE_HOST", "order-service") + ":" + getEnv("ORDER_SERVICE_PORT_VAL", "5000")
+	inventoryServiceURL = "http://" + getEnv("INVENTORY_SERVICE_HOST", "inventory-service") + ":" + getEnv("INVENTORY_SERVICE_PORT_VAL", "5001")
+	paymentServiceURL = "http://" + getEnv("PAYMENT_SERVICE_HOST", "payment-service") + ":" + getEnv("PAYMENT_SERVICE_PORT_VAL", "5002")
+	loyaltyServiceURL = "http://" + getEnv("LOYALTY_SERVICE_HOST", "loyalty-service") + ":" + getEnv("LOYALTY_SERVICE_PORT_VAL", "5004")
 
 	log.Printf("[FRONTEND] Order Service: %s", orderServiceURL)
 	log.Printf("[FRONTEND] Inventory Service: %s", inventoryServiceURL)

@@ -12,13 +12,13 @@ import (
 
 var (
 	orderServiceHost     = getEnv("ORDER_SERVICE_HOST", "order-service")
-	orderServicePort     = getEnv("ORDER_SERVICE_PORT", "5000")
+	orderServicePort     = getEnv("ORDER_SERVICE_PORT_VAL", "5000")
 	inventoryServiceHost = getEnv("INVENTORY_SERVICE_HOST", "inventory-service")
-	inventoryServicePort = getEnv("INVENTORY_SERVICE_PORT", "5001")
+	inventoryServicePort = getEnv("INVENTORY_SERVICE_PORT_VAL", "5001")
 	paymentServiceHost   = getEnv("PAYMENT_SERVICE_HOST", "payment-service")
-	paymentServicePort   = getEnv("PAYMENT_SERVICE_PORT", "5002")
+	paymentServicePort   = getEnv("PAYMENT_SERVICE_PORT_VAL", "5002")
 	loyaltyServiceHost   = getEnv("LOYALTY_SERVICE_HOST", "loyalty-service")
-	loyaltyServicePort   = getEnv("LOYALTY_SERVICE_PORT", "5004")
+	loyaltyServicePort   = getEnv("LOYALTY_SERVICE_PORT_VAL", "5004")
 	port                 = getEnv("PORT", "8000")
 )
 
