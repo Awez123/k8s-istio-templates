@@ -1,0 +1,107 @@
+# 1. Update Frontend v1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: retail-mesh
+spec:
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v1
+---
+# 2. Deploy Frontend v2 (Mirror of v1 for testing)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-v2
+  namespace: retail-mesh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v2
+    spec:
+      containers:
+      - name: frontend
+        image: awezkhan6899/retail-frontend:latest
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT # Prevents the 'too many colons' error
+          value: "6379"
+        - name: ORDER_SERVICE_HOST
+          value: "order-service"
+        - name: ORDER_SERVICE_PORT_VAL
+          value: "5000"
+        - name: INVENTORY_SERVICE_HOST
+          value: "inventory-service"
+        - name: INVENTORY_SERVICE_PORT_VAL
+          value: "5001"
+        - name: PAYMENT_SERVICE_HOST
+          value: "payment-service"
+        - name: PAYMENT_SERVICE_PORT_VAL
+          value: "5002"
+        - name: LOYALTY_SERVICE_HOST
+          value: "loyalty-service"
+        - name: LOYALTY_SERVICE_PORT_VAL
+          value: "5004"
+---
+# 3. Update Order Service stable
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: retail-mesh
+spec:
+  template:
+    metadata:
+      labels:
+        app: order-service
+        version: stable
+---
+# 4. Deploy Order Service beta
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service-beta
+  namespace: retail-mesh
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+      version: beta
+  template:
+    metadata:
+      labels:
+        app: order-service
+        version: beta
+    spec:
+      containers:
+      - name: order-service
+        image: awezkhan6899/retail-order:latest
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres"
+        - name: POSTGRES_USER
+          value: "retail_user"
+        - name: POSTGRES_PASSWORD
+          value: "retail_password"
+        - name: POSTGRES_DB
+          value: "retail_db"
+        - name: INVENTORY_SERVICE_HOST
+          value: "inventory-service"
+        - name: INVENTORY_SERVICE_PORT_VAL
+          value: "5001"
+        - name: PAYMENT_SERVICE_HOST
+          value: "payment-service"
+        - name: PAYMENT_SERVICE_PORT_VAL
+          value: "5002"

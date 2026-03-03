@@ -1,0 +1,14 @@
+{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "order-service",
+            "env": [ { "name": "APP_VERSION", "value": "beta" } ]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -210,7 +210,7 @@ func processPaymentHandler(w http.ResponseWriter, r *http.Request) {
 			TraceID: traceID,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusPaymentRequired)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		json.NewEncoder(w).Encode(response)
 		return
 	}

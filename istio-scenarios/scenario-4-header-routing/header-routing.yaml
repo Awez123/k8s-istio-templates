@@ -1,0 +1,36 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: order-service-header-routing
+  namespace: retail-mesh
+spec:
+  hosts:
+  - order-service
+  http:
+  - match:
+    - headers:
+        x-user-type:
+          exact: beta
+    route:
+    - destination:
+        host: order-service
+        subset: beta
+  - route:
+    - destination:
+        host: order-service
+        subset: stable
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: order-service-destination
+  namespace: retail-mesh
+spec:
+  host: order-service
+  subsets:
+  - name: stable
+    labels:
+      version: stable
+  - name: beta
+    labels:
+      version: beta

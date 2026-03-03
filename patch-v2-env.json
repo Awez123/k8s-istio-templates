@@ -1,0 +1,17 @@
+{
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": { "version": "v2" }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "frontend",
+            "env": [ { "name": "APP_VERSION", "value": "v2" } ]
+          }
+        ]
+      }
+    }
+  }
+}

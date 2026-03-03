@@ -1,0 +1,15 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: retail-gateway
+  namespace: retail-mesh
+spec:
+  selector:
+    istio: ingressgateway # Default Istio ingress gateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*" # In production, replace with your domain

@@ -702,7 +702,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "OK")
+	version := getEnv("APP_VERSION", "v1")
+	fmt.Fprintf(w, "OK - %s", version)
 }
 
 // inventoryHandler fetches inventory from inventory service

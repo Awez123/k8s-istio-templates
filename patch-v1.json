@@ -1,0 +1,11 @@
+{
+  "spec": {
+    "template": {
+      "metadata": {
+        "labels": {
+          "version": "v1"
+        }
+      }
+    }
+  }
+}

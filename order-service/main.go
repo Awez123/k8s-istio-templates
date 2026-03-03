@@ -362,7 +362,8 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "OK")
+	version := getEnv("APP_VERSION", "stable")
+	fmt.Fprintf(w, "OK - %s", version)
 }
 
 // listOrdersHandler handles GET /api/orders - returns all orders
