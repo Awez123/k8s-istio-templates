@@ -8,7 +8,7 @@ global:
 # --- DATABASES ---
 
 postgres:
-  image: postgres:15
+  image: postgres:15-alpine
   port: 5432
   user: retail_user
   password: retail_password
@@ -16,7 +16,7 @@ postgres:
   # The init SQL is handled in the template via ConfigMap
 
 redis:
-  image: redis:7
+  image: redis:7-alpine
   port: 6379
 
 mongodb:
