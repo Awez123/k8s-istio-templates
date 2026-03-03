@@ -243,6 +243,9 @@ func placeOrderHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Order Service] Order created successfully - OrderID: %d, TraceID: %s", orderID, traceID)
 
+	// Reserve inventory (decrement stock)
+	go reserveInventory(traceID, orderReq.ItemID, orderReq.Quantity, r.Header)
+
 	// Trigger payment asynchronously
 	go triggerPayment(traceID, orderID, orderReq.CustomerID, orderReq.TotalPrice, r.Header)
 
@@ -301,6 +304,55 @@ func triggerPayment(traceID string, orderID int, customerID string, amount float
 	defer resp.Body.Close()
 
 	log.Printf("[Order Service] Payment triggered successfully for OrderID: %d, TraceID: %s", orderID, traceID)
+}
+
+// reserveInventory calls the Inventory Service to decrement stock quantity
+func reserveInventory(traceID string, itemID string, quantity int, originalHeaders http.Header) {
+	reserveReq := map[string]interface{}{
+		"item_id":  itemID,
+		"quantity": quantity,
+	}
+
+	body, _ := json.Marshal(reserveReq)
+	httpReq, err := http.NewRequest(http.MethodPost, inventoryServiceURL+"/reserve-stock", bytes.NewReader(body))
+	if err != nil {
+		log.Printf("[Order Service] Failed to create reserve request: %v, TraceID: %s", err, traceID)
+		return
+	}
+
+	// Add headers
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("x-b3-traceid", traceID)
+
+	// Propagate other B3 headers
+	b3Headers := []string{
+		"x-request-id",
+		"x-b3-spanid",
+		"x-b3-parentspanid",
+		"x-b3-sampled",
+		"x-b3-flags",
+	}
+
+	for _, header := range b3Headers {
+		if value := originalHeaders.Get(header); value != "" {
+			httpReq.Header.Set(header, value)
+		}
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		log.Printf("[Order Service] Reserve stock call failed: %v, TraceID: %s", err, traceID)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[Order Service] Stock reservation FAILED with status %d, TraceID: %s", resp.StatusCode, traceID)
+		return
+	}
+
+	log.Printf("[Order Service] Stock reserved successfully for item %s, TraceID: %s", itemID, traceID)
 }
 
 // healthHandler for liveness/readiness probes

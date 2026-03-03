@@ -42,6 +42,10 @@ class StockCheckResponse(BaseModel):
     message: str
     trace_id: str
 
+class ReserveStockRequest(BaseModel):
+    item_id: str
+    quantity: int
+
 # Middleware for logging trace IDs
 @app.middleware("http")
 async def log_trace_id(request: Request, call_next):
@@ -161,6 +165,41 @@ async def check_stock(stock_req: StockCheckRequest):
     
     except Exception as e:
         logger.error(f"[Inventory Service] Error checking stock: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post("/reserve-stock")
+async def reserve_stock(reserve_req: ReserveStockRequest):
+    """Atomically decrement stock quantity in MongoDB"""
+    try:
+        inventory_col = db["inventory"]
+        
+        # Use $inc with a negative value to decrement stock
+        # We also check that the current quantity is >= requested quantity
+        result = inventory_col.find_one_and_update(
+            {"_id": reserve_req.item_id, "quantity": {"$gte": reserve_req.quantity}},
+            {"$inc": {"quantity": -reserve_req.quantity}},
+            return_document=True
+        )
+        
+        if not result:
+            logger.warning(f"[Inventory Service] Failed to reserve stock for {reserve_req.item_id}: Not found or insufficient stock")
+            raise HTTPException(status_code=400, detail="Insufficient stock or item not found")
+        
+        new_quantity = result.get("quantity", 0)
+        logger.info(f"[Inventory Service] Stock reserved for {reserve_req.item_id}: new_quantity={new_quantity}")
+        
+        return {
+            "status": "success",
+            "item_id": reserve_req.item_id,
+            "reserved_quantity": reserve_req.quantity,
+            "new_stock": new_quantity,
+            "message": "Stock reserved successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Inventory Service] Error reserving stock: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/items/{item_id}")
