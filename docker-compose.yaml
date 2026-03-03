@@ -57,7 +57,7 @@ services:
   # ==================== MICROSERVICES ====================
   order-service:
     build:
-      context: ./order-service
+      context: ./microservices/order-service
       dockerfile: Dockerfile
     container_name: retail-order
     hostname: order-service
@@ -72,6 +72,8 @@ services:
       DB_NAME: retail_db
       INVENTORY_SERVICE_HOST: inventory-service
       INVENTORY_SERVICE_PORT: 5001
+      PAYMENT_SERVICE_HOST: payment-service
+      PAYMENT_SERVICE_PORT_VAL: 5002
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,7 +90,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./microservices/frontend
       dockerfile: Dockerfile
     container_name: retail-frontend
     hostname: frontend
@@ -99,7 +101,13 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       ORDER_SERVICE_HOST: order-service
-      ORDER_SERVICE_PORT: 5000
+      ORDER_SERVICE_PORT_VAL: 5000
+      INVENTORY_SERVICE_HOST: inventory-service
+      INVENTORY_SERVICE_PORT_VAL: 5001
+      PAYMENT_SERVICE_HOST: payment-service
+      PAYMENT_SERVICE_PORT_VAL: 5002
+      LOYALTY_SERVICE_HOST: loyalty-service
+      LOYALTY_SERVICE_PORT_VAL: 5004
     depends_on:
       redis:
         condition: service_healthy
@@ -116,7 +124,7 @@ services:
 
   inventory-service:
     build:
-      context: ./inventory-service
+      context: ./microservices/inventory-service
       dockerfile: Dockerfile
     container_name: retail-inventory
     hostname: inventory-service
@@ -141,7 +149,7 @@ services:
 
   payment-service:
     build:
-      context: ./payment-service
+      context: ./microservices/payment-service
       dockerfile: Dockerfile
     container_name: retail-payment
     hostname: payment-service
@@ -150,7 +158,9 @@ services:
     environment:
       PORT: 5002
       NOTIFICATION_SERVICE_HOST: notification-service
-      NOTIFICATION_SERVICE_PORT: 5003
+      NOTIFICATION_SERVICE_PORT_VAL: 5003
+      LOYALTY_SERVICE_HOST: loyalty-service
+      LOYALTY_SERVICE_PORT_VAL: 5004
     depends_on:
       notification-service:
         condition: service_healthy
@@ -165,7 +175,7 @@ services:
 
   notification-service:
     build:
-      context: ./notification-service
+      context: ./microservices/notification-service
       dockerfile: Dockerfile
     container_name: retail-notification
     hostname: notification-service
@@ -184,7 +194,7 @@ services:
 
   loyalty-service:
     build:
-      context: ./loyalty-service
+      context: ./microservices/loyalty-service
       dockerfile: Dockerfile
     container_name: retail-loyalty
     hostname: loyalty-service
@@ -197,6 +207,33 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  admin-frontend:
+    build:
+      context: ./microservices/admin-frontend
+      dockerfile: Dockerfile
+    container_name: retail-admin
+    hostname: admin-frontend
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: 8000
+      ORDER_SERVICE_HOST: order-service
+      ORDER_SERVICE_PORT_VAL: 5000
+      INVENTORY_SERVICE_HOST: inventory-service
+      INVENTORY_SERVICE_PORT_VAL: 5001
+      PAYMENT_SERVICE_HOST: payment-service
+      PAYMENT_SERVICE_PORT_VAL: 5002
+      LOYALTY_SERVICE_HOST: loyalty-service
+      LOYALTY_SERVICE_PORT_VAL: 5004
+    networks:
+      - retail-mesh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
