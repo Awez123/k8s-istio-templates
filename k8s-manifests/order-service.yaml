@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: retail-mesh
+spec:
+  selector:
+    matchLabels: {app: order-service}
+  template:
+    metadata:
+      labels: {app: order-service}
+    spec:
+      containers:
+      - name: order-service
+        image: awezkhan6899/retail-order:latest
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres"
+        - name: POSTGRES_USER
+          value: "retail_user"
+        - name: POSTGRES_PASSWORD
+          value: "retail_password"
+        - name: POSTGRES_DB
+          value: "retail_db"
+        - name: INVENTORY_SERVICE_HOST
+          value: "inventory-service"
+        - name: INVENTORY_SERVICE_PORT_VAL
+          value: "5001"
+        - name: PAYMENT_SERVICE_HOST
+          value: "payment-service"
+        - name: PAYMENT_SERVICE_PORT_VAL
+          value: "5002"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: retail-mesh
+spec:
+  ports: [{port: 5000}]
+  selector: {app: order-service}

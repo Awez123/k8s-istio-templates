@@ -2,10 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: admin-frontend
-  namespace: retail-mesh
-  labels:
-    app: admin-frontend
-    version: v1
 spec:
   replicas: 1
   selector:
@@ -19,62 +15,50 @@ spec:
     spec:
       containers:
       - name: admin-frontend
-        image: awezkhan6899/retail-admin-frontend:latest
-        imagePullPolicy: Always
+        image: {{ .Values.images.adminFrontend }}
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
         ports:
         - name: http
-          containerPort: 8000
+          containerPort: {{ .Values.ports.adminFrontend }}
           protocol: TCP
         env:
         - name: PORT
-          value: "8000"
+          value: "{{ .Values.ports.adminFrontend }}"
         - name: ORDER_SERVICE_HOST
           value: "order-service"
         - name: ORDER_SERVICE_PORT_VAL
-          value: "5000"
+          value: "{{ .Values.ports.orderService }}"
         - name: INVENTORY_SERVICE_HOST
           value: "inventory-service"
         - name: INVENTORY_SERVICE_PORT_VAL
-          value: "5001"
+          value: "{{ .Values.ports.inventoryService }}"
         - name: PAYMENT_SERVICE_HOST
           value: "payment-service"
         - name: PAYMENT_SERVICE_PORT_VAL
-          value: "5002"
+          value: "{{ .Values.ports.paymentService }}"
         - name: LOYALTY_SERVICE_HOST
           value: "loyalty-service"
         - name: LOYALTY_SERVICE_PORT_VAL
-          value: "5004"
+          value: "{{ .Values.ports.loyaltyService }}"
         resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 256Mi
+          {{- toYaml .Values.resources | nindent 12 }}
         livenessProbe:
           httpGet:
             path: /health
-            port: 8000
+            port: {{ .Values.ports.adminFrontend }}
           initialDelaySeconds: 10
           periodSeconds: 30
-          timeoutSeconds: 3
-          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /health
-            port: 8000
+            port: {{ .Values.ports.adminFrontend }}
           initialDelaySeconds: 5
           periodSeconds: 10
-          timeoutSeconds: 2
-          failureThreshold: 2
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: admin-frontend
-  namespace: retail-mesh
-  labels:
-    app: admin-frontend
 spec:
   type: ClusterIP
   selector:
@@ -82,5 +66,5 @@ spec:
   ports:
   - name: http
     protocol: TCP
-    port: 8000
-    targetPort: 8000
+    port: {{ .Values.ports.adminFrontend }}
+    targetPort: {{ .Values.ports.adminFrontend }}

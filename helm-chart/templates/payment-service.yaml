@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+spec:
+  selector:
+    matchLabels: {app: payment-service}
+  template:
+    metadata:
+      labels: {app: payment-service}
+    spec:
+      containers:
+      - name: payment-service
+        image: {{ .Values.images.paymentService }}
+        env:
+        - name: NOTIFICATION_SERVICE_HOST
+          value: "notification-service"
+        - name: NOTIFICATION_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.notificationService }}"
+        - name: LOYALTY_SERVICE_HOST
+          value: "loyalty-service"
+        - name: LOYALTY_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.loyaltyService }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+spec:
+  ports: [{port: {{ .Values.ports.paymentService }}}]
+  selector: {app: payment-service}

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-service
+  namespace: retail-mesh
+spec:
+  selector:
+    matchLabels: {app: inventory-service}
+  template:
+    metadata:
+      labels: {app: inventory-service}
+    spec:
+      containers:
+      - name: inventory-service
+        image: awezkhan6899/retail-inventory:latest
+        env:
+        - name: MONGO_HOST
+          value: "mongodb"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-service
+  namespace: retail-mesh
+spec:
+  ports: [{port: 5001}]
+  selector: {app: inventory-service}

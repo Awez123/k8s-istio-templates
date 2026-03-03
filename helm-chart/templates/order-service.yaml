@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  selector:
+    matchLabels: {app: order-service}
+  template:
+    metadata:
+      labels: {app: order-service}
+    spec:
+      containers:
+      - name: order-service
+        image: {{ .Values.images.orderService }}
+        env:
+        - name: POSTGRES_HOST
+          value: "postgres"
+        - name: POSTGRES_USER
+          value: "{{ .Values.postgres.user }}"
+        - name: POSTGRES_PASSWORD
+          value: "{{ .Values.postgres.password }}"
+        - name: POSTGRES_DB
+          value: "{{ .Values.postgres.database }}"
+        - name: INVENTORY_SERVICE_HOST
+          value: "inventory-service"
+        - name: INVENTORY_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.inventoryService }}"
+        - name: PAYMENT_SERVICE_HOST
+          value: "payment-service"
+        - name: PAYMENT_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.paymentService }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+spec:
+  ports: [{port: {{ .Values.ports.orderService }}}]
+  selector: {app: order-service}

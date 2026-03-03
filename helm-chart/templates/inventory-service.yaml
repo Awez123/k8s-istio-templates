@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-service
+spec:
+  selector:
+    matchLabels: {app: inventory-service}
+  template:
+    metadata:
+      labels: {app: inventory-service}
+    spec:
+      containers:
+      - name: inventory-service
+        image: {{ .Values.images.inventoryService }}
+        env:
+        - name: MONGO_HOST
+          value: "mongodb"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-service
+spec:
+  ports: [{port: {{ .Values.ports.inventoryService }}}]
+  selector: {app: inventory-service}

@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+data:
+  init.sql: |
+    -- Ensure the user exists
+    DO $$ 
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '{{ .Values.postgres.user }}') THEN
+        CREATE ROLE {{ .Values.postgres.user }} WITH LOGIN PASSWORD '{{ .Values.postgres.password }}';
+      END IF;
+    END $$;
+    
+    SELECT 'CREATE DATABASE {{ .Values.postgres.database }}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ .Values.postgres.database }}')\gexec
+    
+    GRANT ALL PRIVILEGES ON DATABASE {{ .Values.postgres.database }} TO {{ .Values.postgres.user }};
+    \connect {{ .Values.postgres.database }};
+    GRANT ALL PRIVILEGES ON SCHEMA public TO {{ .Values.postgres.user }};
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  ports: [{port: {{ .Values.postgres.port }}}]
+  selector: {app: postgres}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      containers:
+      - name: postgres
+        image: {{ .Values.postgres.image }}
+        env:
+        - name: POSTGRES_PASSWORD
+          value: "password"
+        - name: POSTGRES_DB
+          value: "{{ .Values.postgres.database }}"
+        volumeMounts:
+        - name: init-sql
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: init-sql
+        configMap: {name: postgres-init}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  ports: [{port: {{ .Values.redis.port }}}]
+  selector: {app: redis}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  selector:
+    matchLabels: {app: redis}
+  template:
+    metadata:
+      labels: {app: redis}
+    spec:
+      containers:
+      - name: redis
+        image: {{ .Values.redis.image }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+spec:
+  ports: [{port: {{ .Values.mongodb.port }}}]
+  selector: {app: mongodb}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+spec:
+  selector:
+    matchLabels: {app: mongodb}
+  template:
+    metadata:
+      labels: {app: mongodb}
+    spec:
+      containers:
+      - name: mongodb
+        image: {{ .Values.mongodb.image }}

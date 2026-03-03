@@ -1,32 +1,53 @@
-# Default values for retail-mesh chart
-# namespace can be overridden; if unset it defaults to the release namespace
-namespace: "retail"
+# Default values for retail-mesh Helm chart
+# This follows the architecture and fixes from the Gemini refactor session.
 
-image:
-  repository: awezkhan6899/retail
-  pullPolicy: IfNotPresent
-  tag: latest
+global:
+  namespace: retail-mesh
+  imagePullPolicy: Always
+
+# --- DATABASES ---
 
 postgres:
-  user: postgres
-  password: password
-  db: orders_db
+  image: postgres:15
+  port: 5432
+  user: retail_user
+  password: retail_password
+  database: retail_db
+  # The init SQL is handled in the template via ConfigMap
 
-mongodb: {}
-redis: {}
+redis:
+  image: redis:7
+  port: 6379
 
-services:
-  frontend:
-    port: 3000
-  order:
-    port: 5000
-  inventory:
-    port: 5001
-  payment:
-    port: 5002
-  notification:
-    port: 5003
-  loyalty:
-    port: 5004
-  admin-frontend:
-    port: 8000
+mongodb:
+  image: mongo:latest
+  port: 27017
+  database: retail_db
+
+# --- MICROSERVICES ---
+
+images:
+  frontend: awezkhan6899/retail-frontend:latest
+  orderService: awezkhan6899/retail-order:latest
+  inventoryService: awezkhan6899/retail-inventory:latest
+  paymentService: awezkhan6899/retail-payment:latest
+  loyaltyService: awezkhan6899/retail-loyalty:latest
+  notificationService: awezkhan6899/retail-notification:latest
+  adminFrontend: awezkhan6899/retail-admin-frontend:latest
+
+ports:
+  frontend: 3000
+  orderService: 5000
+  inventoryService: 5001
+  paymentService: 5002
+  notificationService: 5003
+  loyaltyService: 5004
+  adminFrontend: 8000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

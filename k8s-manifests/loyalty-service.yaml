@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loyalty-service
+  namespace: retail-mesh
+spec:
+  selector:
+    matchLabels: {app: loyalty-service}
+  template:
+    metadata:
+      labels: {app: loyalty-service}
+    spec:
+      containers:
+      - name: loyalty-service
+        image: awezkhan6899/retail-loyalty:latest
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loyalty-service
+  namespace: retail-mesh
+spec:
+  ports: [{port: 5004}]
+  selector: {app: loyalty-service}

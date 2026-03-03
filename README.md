@@ -1,128 +1,65 @@
-# Retail Mesh - Microservices Learning Project
+# Retail Mesh - Microservices Demo
 
-A 6-microservice retail system designed to master Istio traffic management, Jaeger distributed tracing, and resilience patterns.
+A complete, 7-microservice retail system designed for Kubernetes and Helm learning. This project demonstrates distributed tracing, inter-service communication, and real database integration (PostgreSQL, MongoDB, Redis).
 
-## Project Structure
+## 🏗 Architecture & Service Flow
 
-```
-k8s-istio-templates/
-├── order-service/          # Orchestrator (Go)
-├── frontend/               # Entry point (Go)
-├── inventory-service/      # Catalog (Python/FastAPI)
-├── payment-service/        # Logic-heavy processor (Go)
-├── loyalty-service/        # Points calculator (Python/FastAPI)
-├── notification-service/   # Event notifier (Go)
-└── docker-compose.yaml
-```
+The system simulates a real-world retail flow:
+1.  **Frontend (Go):** The customer entry point.
+2.  **Order Service (Go):** Manages orders in **PostgreSQL**.
+3.  **Inventory Service (Python):** Manages stock in **MongoDB** (Supports atomic stock decrement).
+4.  **Payment Service (Go):** Processes payments and triggers downstream events.
+5.  **Loyalty Service (Python):** Calculates and awards customer points.
+6.  **Notification Service (Go):** Simulates sending alerts.
+7.  **Admin Frontend (Go):** A real-time dashboard to monitor service health and inventory.
 
-## Request Flow (Chain of Command)
+**Flow:** `Frontend` → `Order Service` → `Inventory (Check/Reserve)` → `Payment` → `Loyalty` & `Notification`.
 
-```
-User Browser (Frontend)
-    ↓
-Frontend Service (Redis Session)
-    ↓
-Order Service (PostgreSQL)
-    ├→ Inventory Service (MongoDB)
-    ├→ Payment Service (Simulate Bank)
-    │  └→ Notification Service (Console Log)
-    └→ Loyalty Service (Points Calc)
-```
+---
 
-## Sprint Progress
+## 🚀 Deployment Options
 
-### ✅ Sprint 1: Core Order Service & PostgreSQL
-- [x] `order-service/main.go` with `/place-order` endpoint
-- [x] B3 header propagation helper (`propagateHeaders()`)
-- [x] PostgreSQL integration for order persistence
-- [x] `order-service/Dockerfile` with multi-stage builds
-- [x] Root `docker-compose.yaml` with Postgres & Order service
-
-**Key Features:**
-- Logs `x-b3-traceid` for every request
-- Auto-creates database schema
-- Health check endpoint `/health`
-- Extracts and propagates B3 tracing headers
-
-### ⏳ Sprint 2: Frontend & Redis
-- [ ] Frontend HTTP server (Go)
-- [ ] Redis session management
-- [ ] HTML page with "Buy" button
-
-### ⏳ Sprint 3: Inventory Service & MongoDB
-- [ ] Inventory service (Python/FastAPI)
-- [ ] `/check-stock` endpoint
-- [ ] MongoDB integration
-- [ ] FastAPI middleware for trace logging
-
-### ⏳ Sprint 4: Payment, Loyalty, Notification
-- [ ] Payment service (Go)
-- [ ] Loyalty service (Python/FastAPI)
-- [ ] Notification service (Go)
-
-## Quick Start
-
-### Prerequisites
-- Docker & Docker Compose
-- Go 1.21+ (for local development)
-- Python 3.10+ (for local development)
-
-### Run with Docker Compose
-
+### 1. Helm (Recommended) -- namespace: retail-mesh
+The fastest way to get the entire stack running.
 ```bash
-docker-compose up --build
+# Navigate to the chart directory
+cd helm-chart
+
+# Install the chart
+helm install retail-mesh . -n retail-mesh --create-namespace
 ```
 
-### Test Connectivity
-
+### 2. Kubernetes Manifests
+Standard YAML files organized by service.
 ```bash
-# Create an order
-curl -X POST http://localhost:5000/place-order \
-  -H "Content-Type: application/json" \
-  -H "x-b3-traceid: test-trace-001" \
-  -d '{
-    "item_id": "item-123",
-    "quantity": 2,
-    "customer_id": "cust-456",
-    "total_price": 49.99
-  }'
+# Create the namespace first
+kubectl apply -f k8s-manifests/namespace.yaml
 
-# Check health
-curl http://localhost:5000/health
+# Apply all manifests
+kubectl apply -f k8s-manifests/
 ```
+*Alternatively, use the all-in-one manifest:* `kubectl apply -f gemini-dep.yaml`
 
-### Inspect Data
-
+### 3. Docker Compose
+Perfect for local development without a cluster.
 ```bash
-# Access Postgres
-docker exec -it retail-postgres psql -U retail_user -d retail_db -c "SELECT * FROM orders;"
+docker-compose up -d
 ```
 
-## B3 Tracing Headers
+---
 
-Every service MUST propagate these headers:
-- `x-request-id` - Request correlation ID
-- `x-b3-traceid` - Trace ID (same across all services in chain)
-- `x-b3-spanid` - Span ID (unique per service)
-- `x-b3-parentspanid` - Parent span ID
-- `x-b3-sampled` - Sampling decision (0 or 1)
-- `x-b3-flags` - Debug flag
+## 🔍 Monitoring & Usage
 
-**Validation:** If trace ID matches across all 6 services for one request, the system is ready for Jaeger integration.
+*   **Customer Frontend:** `http://<node-ip>:3000`
+*   **Admin Dashboard:** `http://<node-ip>:8000` (View real-time stock and health)
+*   **Health Checks:** Every service exposes a `/health` endpoint.
 
-## Architecture Decisions
+---
 
-- **HTTP/REST** for inter-service communication (not gRPC to keep it simple)
-- **PostgreSQL** for transactional data (orders)
-- **MongoDB** for catalog/document data (inventory)
-- **Redis** for session management
-- **Go** for performance-critical services (Order, Payment, Notification)
-- **Python/FastAPI** for data-heavy services (Inventory, Loyalty)
+## 🛠 Features for Learning
+*   **Atomic Transactions:** Inventory Service uses MongoDB `$inc` to ensure stock levels are accurate.
+*   **Distributed Tracing:** All services support manual **B3 Header Propagation** (`x-b3-traceid`), making it compatible with Jaeger out-of-the-box.
+*   **Istio Ready:** This repository is an excellent playground for practicing **Istio Service Mesh** patterns like Traffic Shifting, Fault Injection, and Mutual TLS (mTLS).
 
-## Next Steps
-
-1. **Verify Sprint 1:** Run docker-compose and confirm order creation
-2. **Implement Sprint 2:** Add Frontend and Redis
-3. **Implement Sprint 3:** Add Inventory and MongoDB
-4. **Implement Sprint 4:** Add Payment, Loyalty, and Notification
-5. **Deploy to Istio:** Apply the learned patterns to a K8s cluster with Istio
+---
+*Created for the K8s Community. Happy Deploying!* 🚀

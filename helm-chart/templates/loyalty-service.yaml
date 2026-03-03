@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loyalty-service
+spec:
+  selector:
+    matchLabels: {app: loyalty-service}
+  template:
+    metadata:
+      labels: {app: loyalty-service}
+    spec:
+      containers:
+      - name: loyalty-service
+        image: {{ .Values.images.loyaltyService }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: loyalty-service
+spec:
+  ports: [{port: {{ .Values.ports.loyaltyService }}}]
+  selector: {app: loyalty-service}

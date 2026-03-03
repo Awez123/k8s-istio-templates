@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:
+  selector:
+    matchLabels: {app: frontend}
+  template:
+    metadata:
+      labels: {app: frontend}
+    spec:
+      containers:
+      - name: frontend
+        image: {{ .Values.images.frontend }}
+        env:
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          value: "{{ .Values.redis.port }}"
+        - name: ORDER_SERVICE_HOST
+          value: "order-service"
+        - name: ORDER_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.orderService }}"
+        - name: INVENTORY_SERVICE_HOST
+          value: "inventory-service"
+        - name: INVENTORY_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.inventoryService }}"
+        - name: PAYMENT_SERVICE_HOST
+          value: "payment-service"
+        - name: PAYMENT_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.paymentService }}"
+        - name: LOYALTY_SERVICE_HOST
+          value: "loyalty-service"
+        - name: LOYALTY_SERVICE_PORT_VAL
+          value: "{{ .Values.ports.loyaltyService }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  ports: [{port: {{ .Values.ports.frontend }}}]
+  selector: {app: frontend}
